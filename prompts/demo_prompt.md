@@ -1,80 +1,103 @@
-# Prompt: Build “Prompt Compare (3-way)” UI using Monaco DiffEditor (DRY + No Bloat)
+# Prompt: Build “Prompt Compare (3-way)” UI with Stepper + Upload-to-Monaco (DRY + No Bloat)
 
 ## CONTEXT
-You are working inside an existing React + TypeScript app that already uses Monaco in at least one place.
+You are working inside an existing React + TypeScript app that already uses Monaco.
 The app uses Redux Toolkit and RTK Query for server state.
-You are adding a new feature: **Prompt Compare** to compare 3 prompts (A/B/C) and show **line differences** using Monaco’s **DiffEditor**.
+You are adding a new feature: **Prompt Compare** to compare prompts and show **line differences** using Monaco **DiffEditor**.
 
 ## OBJECTIVE
 Implement a clean, maintainable, DRY “Prompt Compare” feature that:
-- Lets users edit **Prompt A / Prompt B / Prompt C**
-- Lets users choose a **Base** prompt (A | B | C)
-- Renders two diff views:
-  - **Base vs B**
-  - **Base vs C**
-- Uses Monaco’s DiffEditor for diffs (no custom diff logic unless required)
+- Guides the user through **steps** (visible progress)
+- Step 1: Upload/select the **Base prompt** (used as comparison baseline)
+- Step 2: Upload/select **two prompts to compare** (Compare 1 + Compare 2)
+- Step 3: Show editors + diffs:
+  - Monaco editors for Base / Compare 1 / Compare 2 (editable)
+  - Two diff views using Monaco DiffEditor:
+    - Base vs Compare 1
+    - Base vs Compare 2
+- The uploaded content populates the Monaco editors automatically.
 
 ## GUARDRAILS (MUST FOLLOW)
-- **No bloat**: do not generate unnecessary abstractions, demo code, or extra features.
-- **DRY**: no duplicated JSX for editors/diff panels; use small reusable components/config-driven rendering.
-- **Keep typing fast**: prompt text stays in **local component state** (not Redux).
-- **Redux usage**: use RTK Query only for async/persisted data (save/load prompt sets, optional run endpoints).
-- **No inline styles** except small layout necessities; prefer existing CSS/Tailwind utilities already used in the repo.
-- **No new libraries** besides what is required for Monaco integration (already present).
+- **No bloat**: do not add extra features beyond spec.
+- **DRY**: avoid duplicated JSX; use small reusable components and config-driven rendering.
+- **Local state for typing**: prompt text stays in local component state (not Redux).
+- **Redux usage**: RTK Query only for persisted/async (optional). Upload parsing happens client-side.
+- **No inline styles** except minimal layout; prefer existing styling system used in the repo.
+- **No new libraries** unless strictly necessary; if needed, pick a lightweight option.
 - Respect existing folder structure, lint rules, and component conventions.
+- TypeScript strict, no `any`.
 
 ## REQUIRED OUTPUTS
-1. A short file plan (paths + what each file contains).
+1. Short file plan (paths + responsibility).
 2. Production-ready code for:
-   - `PromptComparePage.tsx` (page container)
-   - `PromptEditorPanel.tsx` (reusable editor for A/B/C)
-   - `PromptDiffPanel.tsx` (reusable DiffEditor wrapper)
-   - `usePromptCompareState.ts` (small hook to centralize base selection + prompt state, DRY)
-   - (Optional) `promptSetsApi.ts` RTK Query endpoints ONLY if you need persistence
-3. Any minimal routing/nav changes if needed (do not rewrite the router).
+   - `PromptCompareWizardPage.tsx` (page container with steps)
+   - `PromptUploadStep.tsx` (reusable upload UI for step 1 and step 2)
+   - `PromptCompareWorkspace.tsx` (editors + diff panels)
+   - `PromptEditorPanel.tsx` (Monaco Editor wrapper)
+   - `PromptDiffPanel.tsx` (Monaco DiffEditor wrapper)
+   - `usePromptCompareWizard.ts` (hook that owns wizard state + DRY step logic)
+   - `fileParsing.ts` (safe file parsing helpers)
+3. Minimal routing/nav changes only if needed.
 
 ## FEATURE SPEC (DO NOT DEVIATE)
-### UI
-- Header: Title “Prompt Compare”, Base selector (A/B/C)
-- Editors section: three Monaco Editors for A/B/C (same language: `markdown` by default)
-- Diff section:
-  - Diff 1: Base vs B (if Base is B, show Base vs A instead)
-  - Diff 2: Base vs C (if Base is C, show Base vs A instead)
-- Each panel has a small label (e.g., “Base: A”, “Compare: B”)
-- Add a “Copy Prompt” button per prompt (A/B/C) (minimal, no heavy UI)
 
-### State Rules
-- `prompts = { a, b, c }` in local state
-- `baseKey = 'a' | 'b' | 'c'`
-- Derived comparisons:
-  - Determine `compareKey1` and `compareKey2` based on baseKey:
-    - If baseKey = A -> compareKey1=B, compareKey2=C
-    - If baseKey = B -> compareKey1=A, compareKey2=C
-    - If baseKey = C -> compareKey1=A, compareKey2=B
+### Terminology
+- `base` = the baseline prompt
+- `compare1` and `compare2` = the two prompts compared against base
+- Keys: `base | compare1 | compare2`
 
-### Monaco Rules
-- Use existing Monaco wrapper/pattern used elsewhere in the repo.
-- Use DiffEditor for diffs; set options for readability (wordWrap on, readOnly true on diff panels).
-- Support sync scroll between diff panels if trivial; otherwise omit (no complexity).
+### Stepper (3 steps)
+- Step 1: **Upload Base Prompt**
+  - UI: file picker + optional drag-and-drop area
+  - Accept: `.txt`, `.md`, `.json`
+  - After upload, parse file → set `prompts.base`
+  - Show a small preview snippet (first ~200 chars)
+  - “Next” enabled only when base is present (non-empty)
 
-## CONSTRAINTS
-- TypeScript strict.
-- No `any`.
-- Components must be testable and not tightly coupled to global store.
-- Avoid over-engineering: no “factory patterns”, no excessive generic types, no unnecessary context providers.
+- Step 2: **Upload Prompts to Compare**
+  - Two upload slots: “Compare Prompt 1” and “Compare Prompt 2”
+  - Each slot accepts `.txt`, `.md`, `.json`
+  - After upload, parse file → set `prompts.compare1` / `prompts.compare2`
+  - “Next” enabled only when at least **one** compare prompt is present
+    - If only one provided, still proceed; show second editor empty (user can type)
 
-## DELIVERABLE QUALITY BAR
-- Minimal and clean.
-- DRY rendering via mapping over prompt keys/metadata.
-- Clear types.
-- Comments only where they prevent confusion (avoid noise).
+- Step 3: **Review & Compare**
+  - Show 3 Monaco editors (Base / Compare 1 / Compare 2)
+  - Show 2 Monaco DiffEditors:
+    - Base vs Compare 1
+    - Base vs Compare 2
+  - Provide a back button to return to uploads without losing state
 
-## INPUTS YOU CAN ASSUME
-- Monaco already installed and configured somewhere in the app.
-- RTK Query is available.
-- You can create new files under an existing feature folder (e.g., `src/features/prompts/compare/`).
+### Upload Parsing Rules
+- `.txt` / `.md`: treat as plain text
+- `.json`: support these shapes (in priority order):
+  1) `{ "prompt": "..." }`
+  2) `{ "content": "..." }`
+  3) `{ "text": "..." }`
+  4) any JSON → pretty-print as text (2-space indent) as fallback
+- Enforce max file size (e.g., 200KB) to prevent performance issues.
+- If parse fails, show a user-friendly error message (no stack traces).
 
-## OUTPUT FORMAT
-- First: **File plan** as a bulleted list.
-- Then: Each file in its own code fence with the full content.
-- No additional commentary outside those sections.
+### Editor Behavior
+- Monaco language default: `markdown` (configurable constant).
+- Editing is allowed in Step 3 (user can tweak prompts).
+- Add “Copy” buttons per editor panel (Base/Compare1/Compare2).
+- Add a “Reset to Uploaded” button per panel (optional, minimal) ONLY if easy:
+  - Store `uploadedPrompts` separately from `draftPrompts`
+  - Reset restores from uploaded snapshot (DRY approach)
+
+### Diff Behavior (Monaco DiffEditor)
+- Diffs are read-only.
+- Options: wordWrap on, renderSideBySide true, minimap off (if consistent with app).
+- No custom diff algorithm; use Monaco DiffEditor.
+
+## STATE SHAPE (MUST USE)
+```ts
+type PromptKey = "base" | "compare1" | "compare2";
+
+type PromptCompareState = {
+  step: 1 | 2 | 3;
+  prompts: Record<PromptKey, string>;          // current drafts shown in editors
+  uploadedPrompts: Record<PromptKey, string>;  // last uploaded versions (for reset)
+  errors: Partial<Record<PromptKey, string>>;  // upload/parse errors
+};
