@@ -1,103 +1,131 @@
-# Prompt: Build “Prompt Compare (3-way)” UI with Stepper + Upload-to-Monaco (DRY + No Bloat)
+# PROMPT: Build a React + RTK (RTK Query) demo UI for “Agentic Design” (Version Comparison)
 
-## CONTEXT
-You are working inside an existing React + TypeScript app that already uses Monaco.
-The app uses Redux Toolkit and RTK Query for server state.
-You are adding a new feature: **Prompt Compare** to compare prompts and show **line differences** using Monaco **DiffEditor**.
+## Context
+You are building a **demo front-end** (no real backend required) that showcases an “Agentic Design” workflow UI:
+- Users can view multiple **versions** of an agent run side-by-side (Version 1/2/3…).
+- Each version has **Details**, **Prompts**, and **Outputs**.
+- UI emphasizes **space efficiency**: Details + Prompts are collapsed by default; Outputs are prominent and readable without excessive scrolling.
+- There is a “Show Versions” control and the **ability to name versions**.
 
-## OBJECTIVE
-Implement a clean, maintainable, DRY “Prompt Compare” feature that:
-- Guides the user through **steps** (visible progress)
-- Step 1: Upload/select the **Base prompt** (used as comparison baseline)
-- Step 2: Upload/select **two prompts to compare** (Compare 1 + Compare 2)
-- Step 3: Show editors + diffs:
-  - Monaco editors for Base / Compare 1 / Compare 2 (editable)
-  - Two diff views using Monaco DiffEditor:
-    - Base vs Compare 1
-    - Base vs Compare 2
-- The uploaded content populates the Monaco editors automatically.
+## Tech Constraints
+- React 18 + TypeScript
+- Redux Toolkit
+- **RTK Query for data access** (even if data is mocked using a fake baseQuery or MSW)
+- Prefer **shadcn/ui** components (Accordion, Tabs, Card, Button, ScrollArea, Sheet/Drawer, Tooltip, Badge)
+- Styling: Tailwind (no inline styles unless unavoidable)
+- Keep code **DRY**: reusable components, shared types, selectors, and utilities
+- Performance best practices: memoization where appropriate, stable callbacks, avoid unnecessary re-renders
 
-## GUARDRAILS (MUST FOLLOW)
-- **No bloat**: do not add extra features beyond spec.
-- **DRY**: avoid duplicated JSX; use small reusable components and config-driven rendering.
-- **Local state for typing**: prompt text stays in local component state (not Redux).
-- **Redux usage**: RTK Query only for persisted/async (optional). Upload parsing happens client-side.
-- **No inline styles** except minimal layout; prefer existing styling system used in the repo.
-- **No new libraries** unless strictly necessary; if needed, pick a lightweight option.
-- Respect existing folder structure, lint rules, and component conventions.
-- TypeScript strict, no `any`.
+---
 
-## REQUIRED OUTPUTS
-1. Short file plan (paths + responsibility).
-2. Production-ready code for:
-   - `PromptCompareWizardPage.tsx` (page container with steps)
-   - `PromptUploadStep.tsx` (reusable upload UI for step 1 and step 2)
-   - `PromptCompareWorkspace.tsx` (editors + diff panels)
-   - `PromptEditorPanel.tsx` (Monaco Editor wrapper)
-   - `PromptDiffPanel.tsx` (Monaco DiffEditor wrapper)
-   - `usePromptCompareWizard.ts` (hook that owns wizard state + DRY step logic)
-   - `fileParsing.ts` (safe file parsing helpers)
-3. Minimal routing/nav changes only if needed.
+## Demo Requirements (must match the screenshot’s intent)
+### Layout
+1. **Top bar**
+   - Title: “Agentic Design”
+   - Button: **Show Versions** (toggles a versions drawer/panel or reveals side-by-side columns)
 
-## FEATURE SPEC (DO NOT DEVIATE)
+2. **Left rail / sidebar (Version selector)**
+   - Displays the currently selected “Version: Standard” (or user-defined name)
+   - Has collapsible sections:
+     - Details (collapsed by default)
+     - Prompts (collapsed by default)
+   - A list: “All Runs for SID12345” (run cards with timestamp, status, run id)
 
-### Terminology
-- `base` = the baseline prompt
-- `compare1` and `compare2` = the two prompts compared against base
-- Keys: `base | compare1 | compare2`
+3. **Main comparison area**
+   - Show **2–3 version columns** side-by-side (responsive: stack on small screens)
+   - Each column is a **VersionCard**:
+     - Header: Version name (editable), close “X”
+     - Compact “Details” block (model, runs count, latest run timestamp, status)
+     - “Prompts” section (Prompt 1..N)
+     - “All Runs for SID12345” list
+     - **Outputs** displayed in larger readable cards; prioritize Outputs (move them up / allocate more vertical space)
 
-### Stepper (3 steps)
-- Step 1: **Upload Base Prompt**
-  - UI: file picker + optional drag-and-drop area
-  - Accept: `.txt`, `.md`, `.json`
-  - After upload, parse file → set `prompts.base`
-  - Show a small preview snippet (first ~200 chars)
-  - “Next” enabled only when base is present (non-empty)
+### Interaction
+- “Show Versions” toggles the comparison view
+- User can:
+  - Add a version to compare
+  - Remove version column
+  - Rename a version (inline edit)
+  - Expand/collapse Details and Prompts (default collapsed)
+  - Select a run in “All Runs” and see that run’s Outputs
 
-- Step 2: **Upload Prompts to Compare**
-  - Two upload slots: “Compare Prompt 1” and “Compare Prompt 2”
-  - Each slot accepts `.txt`, `.md`, `.json`
-  - After upload, parse file → set `prompts.compare1` / `prompts.compare2`
-  - “Next” enabled only when at least **one** compare prompt is present
-    - If only one provided, still proceed; show second editor empty (user can type)
+### Data model (mocked)
+- Entity: `AgentVersion`
+  - id, name, model, status, runs[]
+- Entity: `Run`
+  - id, startedAt, status, outputs[], prompts[]
+- Entity: `Output`
+  - id, title, body, createdAt
 
-- Step 3: **Review & Compare**
-  - Show 3 Monaco editors (Base / Compare 1 / Compare 2)
-  - Show 2 Monaco DiffEditors:
-    - Base vs Compare 1
-    - Base vs Compare 2
-  - Provide a back button to return to uploads without losing state
+Include mocked data for:
+- SID12345
+- Version 2 and Version 3 (each with at least 1 run and 2 outputs)
 
-### Upload Parsing Rules
-- `.txt` / `.md`: treat as plain text
-- `.json`: support these shapes (in priority order):
-  1) `{ "prompt": "..." }`
-  2) `{ "content": "..." }`
-  3) `{ "text": "..." }`
-  4) any JSON → pretty-print as text (2-space indent) as fallback
-- Enforce max file size (e.g., 200KB) to prevent performance issues.
-- If parse fails, show a user-friendly error message (no stack traces).
+---
 
-### Editor Behavior
-- Monaco language default: `markdown` (configurable constant).
-- Editing is allowed in Step 3 (user can tweak prompts).
-- Add “Copy” buttons per editor panel (Base/Compare1/Compare2).
-- Add a “Reset to Uploaded” button per panel (optional, minimal) ONLY if easy:
-  - Store `uploadedPrompts` separately from `draftPrompts`
-  - Reset restores from uploaded snapshot (DRY approach)
+## State & Architecture (DRY)
+### Redux
+- Use RTK Query endpoints:
+  - `getVersions({ sid })`
+  - `getVersion({ sid, versionId })`
+  - `getRuns({ sid, versionId })`
+  - (optional) `updateVersionName({ versionId, name })` mocked
+- Use a UI slice for view state:
+  - `selectedSid`
+  - `comparisonVersionIds: string[]`
+  - `selectedRunByVersionId: Record<versionId, runId>`
+  - `isShowVersions: boolean`
+  - `collapsedSections: { details: boolean; prompts: boolean }` (or per-version if needed)
 
-### Diff Behavior (Monaco DiffEditor)
-- Diffs are read-only.
-- Options: wordWrap on, renderSideBySide true, minimap off (if consistent with app).
-- No custom diff algorithm; use Monaco DiffEditor.
+### Reusable Components (no duplication)
+- `PageHeader`
+- `SidebarVersionPanel`
+- `RunsList` (shared for sidebar + each version card)
+- `VersionCard`
+- `CollapsibleSection` (Details/Prompts)
+- `OutputsPanel` (maps OutputCard)
+- `InlineEditableText` (rename version)
+- Shared types in `/types`
+- Shared formatting utils in `/utils` (date formatting, status badge mapping)
 
-## STATE SHAPE (MUST USE)
-```ts
-type PromptKey = "base" | "compare1" | "compare2";
+---
 
-type PromptCompareState = {
-  step: 1 | 2 | 3;
-  prompts: Record<PromptKey, string>;          // current drafts shown in editors
-  uploadedPrompts: Record<PromptKey, string>;  // last uploaded versions (for reset)
-  errors: Partial<Record<PromptKey, string>>;  // upload/parse errors
-};
+## File/Folder Structure
+Provide a clean, scalable structure, e.g.
+- `src/app/store.ts`
+- `src/features/agentic/api/agenticApi.ts` (RTK Query)
+- `src/features/agentic/slice/agenticUiSlice.ts`
+- `src/features/agentic/components/*`
+- `src/pages/AgenticDesignDemoPage.tsx`
+- `src/types/agentic.ts`
+- `src/utils/format.ts`
+
+---
+
+## Accessibility & UX
+- Keyboard accessible controls (rename, collapse, select run)
+- Reasonable ARIA labels for buttons (close version, expand details, etc.)
+- Status badges (“Completed”, “Running”, “Failed”)
+- Empty states (no versions selected, no runs)
+
+---
+
+## Deliverables
+1. A working demo page that visually matches the screenshot’s intent:
+   - collapsed Details/Prompts
+   - outputs prioritized
+   - side-by-side version comparison
+   - run lists for each version
+2. Provide:
+   - All TypeScript code files
+   - Mock data approach (fake baseQuery or MSW)
+   - Minimal setup instructions
+3. Keep code DRY and production-quality.
+
+## Do NOT
+- Do not use inline styles heavily
+- Do not duplicate run list/output rendering in multiple places
+- Do not introduce non-essential libraries
+- Do not implement real authentication
+
+Now generate the complete implementation.
