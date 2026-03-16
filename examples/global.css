@@ -1,0 +1,170 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ── Core surfaces ── */
+    --background:         0 0% 97%;
+    --foreground:         0 0% 8%;
+
+    --card:               0 0% 100%;
+    --card-foreground:    0 0% 8%;
+
+    --popover:            0 0% 100%;
+    --popover-foreground: 0 0% 8%;
+
+    /* ── Brand ── */
+    --primary:            220 14% 14%;
+    --primary-foreground: 0 0% 95%;
+
+    --secondary:          0 0% 93%;
+    --secondary-foreground: 220 14% 14%;
+
+    --muted:              0 0% 92%;
+    --muted-foreground:   0 0% 46%;
+
+    --accent:             38 92% 50%;       /* amber — the ONE accent */
+    --accent-foreground:  220 14% 10%;
+
+    --destructive:        0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+
+    /* ── Chrome ── */
+    --border:             0 0% 82%;
+    --input:              0 0% 82%;
+    --ring:               38 92% 50%;
+
+    --radius: 0.25rem;                      /* sharper than default */
+
+    /* ── Custom tokens ── */
+    --font-display: 'IBM Plex Mono', monospace;
+    --font-body:    'DM Sans', sans-serif;
+
+    --grid-line: rgba(0,0,0,0.06);
+  }
+
+  .dark {
+    /* ── Core surfaces ── */
+    --background:         220 13% 9%;
+    --foreground:         210 12% 82%;
+
+    --card:               220 13% 11%;
+    --card-foreground:    210 12% 82%;
+
+    --popover:            220 13% 11%;
+    --popover-foreground: 210 12% 82%;
+
+    /* ── Brand ── */
+    --primary:            210 12% 80%;
+    --primary-foreground: 220 13% 9%;
+
+    --secondary:          220 13% 15%;
+    --secondary-foreground: 210 12% 82%;
+
+    --muted:              220 13% 14%;
+    --muted-foreground:   210 10% 50%;
+
+    --accent:             38 85% 48%;
+    --accent-foreground:  220 13% 9%;
+
+    --destructive:        0 62% 45%;
+    --destructive-foreground: 0 0% 95%;
+
+    /* ── Chrome ── */
+    --border:             220 13% 20%;
+    --input:              220 13% 20%;
+    --ring:               38 85% 48%;
+
+    /* ── Custom tokens ── */
+    --grid-line: rgba(255,255,255,0.04);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.6;
+    font-weight: 300;
+    /* subtle grid overlay — the industrial texture */
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  /* Mono headings — the terminal feel */
+  h1, h2, h3, h4, h5, h6,
+  .font-heading {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+
+  h1 { font-size: 2rem;    line-height: 1.1; }
+  h2 { font-size: 1.375rem; line-height: 1.2; }
+  h3 { font-size: 1.125rem; line-height: 1.3; }
+
+  /* Mono anywhere a label/badge matters */
+  .font-mono,
+  code, kbd, pre,
+  [data-slot="badge"],
+  [data-slot="label"] {
+    font-family: var(--font-display);
+  }
+}
+
+@layer components {
+  /* ── Amber accent rule — use sparingly ── */
+  .text-accent { color: hsl(var(--accent)); }
+  .border-accent { border-color: hsl(var(--accent)); }
+
+  /* ── Subtle scan-line effect on cards ── */
+  .card-terminal {
+    position: relative;
+    overflow: hidden;
+  }
+  .card-terminal::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 3px,
+      hsl(var(--foreground) / 0.015) 3px,
+      hsl(var(--foreground) / 0.015) 4px
+    );
+    pointer-events: none;
+    z-index: 0;
+  }
+  .card-terminal > * { position: relative; z-index: 1; }
+
+  /* ── Data label pattern ── */
+  .data-label {
+    font-family: var(--font-display);
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+  }
+
+  /* ── Status dot ── */
+  .status-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: hsl(var(--accent));
+    box-shadow: 0 0 6px hsl(var(--accent) / 0.7);
+  }
+}
